@@ -11,7 +11,11 @@ module OmniAuth
         :token_url => '/yconnect/v1/token'
       }
 
-      # option :authorize_options, [:state, :display, :prompt, :scope, :nonce]
+      option :authorize_options, [:display, :prompt, :scope]
+			option :auth_token_params, {
+				:header_format => 'Bearer %s',
+				:param_name => 'access_token'
+			}
 
       def request_phase
         super
@@ -48,6 +52,7 @@ module OmniAuth
       end
 
       def raw_info
+				access_token.options[:mode] = :header
         @raw_info ||= access_token.get('https://userinfo.yahooapis.jp/yconnect/v1/attribute?schema=openid').parsed
       end
 
