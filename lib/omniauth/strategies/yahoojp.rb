@@ -38,7 +38,7 @@ module OmniAuth
       end
 
       def raw_info
-				access_token.options[:mode] = :header
+        access_token.options[:mode] = :header
         @raw_info ||= access_token.get('https://userinfo.yahooapis.jp/yconnect/v1/attribute?schema=openid').parsed
       end
 
@@ -49,19 +49,16 @@ module OmniAuth
         end
       end
 
-			def build_access_token
-				token_params = {
-					:code => request.params['code'],
-					:redirect_uri => callback_url,
-					:grant_type => 'authorization_code'
-				}
-				headers = {
-					:headers => {'Authorization' => HTTPAuth::Basic.pack_authorization(client.id, client.secret)}
-				}
+      def build_access_token
+        token_params = {
+          :code => request.params['code'],
+          :redirect_uri => callback_url,
+          :grant_type => 'authorization_code',
+          :headers => {'Authorization' => HTTPAuth::Basic.pack_authorization(client.id, client.secret)}
+        }
 
-				token_params = token_params.merge(headers);
-				client.get_token(token_params);
-			end
+        client.get_token(token_params);
+      end
 
     end
   end
