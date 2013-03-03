@@ -12,25 +12,11 @@ module OmniAuth
       }
 
       option :authorize_options, [:display, :prompt, :scope]
-			option :auth_token_params, {
-				:header_format => 'Bearer %s',
-				:param_name => 'access_token'
-			}
 
       def request_phase
         super
       end
       
-      def authorize_params
-        super.tap do |params|
-          %w[scope, client_options].each do |v|
-            if request.params[v]
-              params[v.to_sym] = request.params[v]
-            end
-          end
-        end
-      end
-
       uid { raw_info['user_id'] }
 
       info do
@@ -40,7 +26,7 @@ module OmniAuth
           :first_name => raw_info['given_name'],
           :last_name  => raw_info['family_name'],
           :urls => {
-            'YahooJp' => rawinfo['link'],
+            'YahooJp' => raw_info['link'],
           },
         })
       end
@@ -62,6 +48,20 @@ module OmniAuth
           value.nil? || (value.respond_to?(:empty?) && value.empty?)
         end
       end
+
+			def build_access_token
+				token_params = {
+					:code => request.params['code'],
+					:redirect_uri => callback_url,
+					:grant_type => 'authorization_code'
+				}
+				headers = {
+					:headers => {'Authorization' => HTTPAuth::Basic.pack_authorization(client.id, client.secret)}
+				}
+
+				token_params = token_params.merge(headers);
+				client.get_token(token_params);
+			end
 
     end
   end
