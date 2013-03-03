@@ -2,7 +2,7 @@
 require File.expand_path('../lib/omniauth-yahoojp/version', __FILE__)
 
 Gem::Specification.new do |gem|
-  gem.authors       = ["Chiaki Fujimon"]
+  gem.authors       = ["mikanmarusan"]
   gem.email         = ["chiakifujimon@gmail.com"]
   gem.description   = %q{Official OmniAuth strategy for Yahoo! JAPAN.}
   gem.summary       = %q{Official OmniAuth strategy for Yahoo! JAPAN.}
