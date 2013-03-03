@@ -4,6 +4,11 @@ module OmniAuth
   module Strategies
     class YahooJp < OmniAuth::Strategies::OAuth2
 
+args [:client_id, :client_secret]
+
+option :client_id, nil
+option :client_secret, nil
+
       option :name, 'yahoojp'
       option :client_options, {
         :site => 'https://auth.login.yahoo.co.jp',
@@ -12,11 +17,25 @@ module OmniAuth
       }
 
       option :authorize_options, [:display, :prompt, :scope]
+#			option :token_params, {
+#:headers => {'Authorization' => HTTPAuth::Basic.pack_authorization(client_id, client_secret)}}
+option :auth_token_params, {:mode => :header}
 
       def request_phase
         super
+				#options.client_id
       end
       
+      def authorize_params
+        super.tap do |params|
+          %w[scope, client_options].each do |v|
+            if request.params[v]
+              params[v.to_sym] = request.params[v]
+            end
+          end
+        end
+      end
+
       uid { raw_info['user_id'] }
 
       info do
@@ -37,6 +56,10 @@ module OmniAuth
         prune! hash
       end
 
+      def token_params
+				options.token_params.merge(options.token_options.inject({}){|h,k| h[k.to_sym] = options[k] if options[k]; h}).merge(:headers => {'Authorization' => HTTPAuth::Basic.pack_authorization(client_id, client_secret)})
+			end
+
       def raw_info
 				access_token.options[:mode] = :header
         @raw_info ||= access_token.get('https://userinfo.yahooapis.jp/yconnect/v1/attribute?schema=openid').parsed
@@ -50,17 +73,10 @@ module OmniAuth
       end
 
 			def build_access_token
-				token_params = {
-					:code => request.params['code'],
-					:redirect_uri => callback_url,
-					:grant_type => 'authorization_code'
-				}
-				headers = {
-					:headers => {'Authorization' => HTTPAuth::Basic.pack_authorization(client.id, client.secret)}
-				}
+				code = request.params['code']
+				params = {'grant_type' => 'authorization_code', 'code' => code, :redirect_uri => callback_url}
 
-				token_params = token_params.merge(headers);
-				client.get_token(token_params);
+				client.get_token(params.merge(token_params.to_hash(:symbolize_keys => true)), deep_symbolize(options.auth_token_params))
 			end
 
     end
