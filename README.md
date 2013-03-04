@@ -6,18 +6,18 @@ on the [Yahoo! JAPAN Developer Network](https://e.developer.yahoo.co.jp/dashboar
 
 ## Basic Usage
 
-    use OmniAuth::Builder do
-      provider :yahoojp, ENV['YAHOOJP_KEY'], ENV['YAHOOJP_SECRET']
-    end
-
-## Scopes
-
 YConnect API v1 lets you set scopes to provide granular access to different types of data: 
 
-	use OmniAuth::Builder do
-      provider :yahoojp, ENV['YAHOOJP_KEY'], ENV['YAHOOJP_SECRET'], scope: "openid,profile,email,address"
+    use OmniAuth::Builder do
+        provider :yahoojp, ENV['YAHOOJP_KEY'], ENV['YAHOOJP_SECRET'], 
+        {
+            scope: "openid,profile,email,address"
+        }
     end
 
+# Advanced Parameters
+
+You can also set :display, :prompt parameter to specify behavior of sign-in and permission page.
 More info on [YConnect](http://developer.yahoo.co.jp/yconnect/).
 
 ## License
