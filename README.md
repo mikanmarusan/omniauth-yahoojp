@@ -11,7 +11,7 @@ YConnect API v1 lets you set scopes to provide granular access to different type
     use OmniAuth::Builder do
         provider :yahoojp, ENV['YAHOOJP_KEY'], ENV['YAHOOJP_SECRET'], 
         {
-            scope: "openid,profile,email,address"
+            scope: "openid profile email address"
         }
     end
 
