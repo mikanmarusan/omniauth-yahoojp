@@ -1,4 +1,5 @@
 require 'omniauth-oauth2'
+require 'httpauth'
 
 module OmniAuth
   module Strategies
