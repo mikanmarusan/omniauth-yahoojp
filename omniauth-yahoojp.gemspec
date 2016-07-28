@@ -14,6 +14,7 @@ Gem::Specification.new do |gem|
   gem.name          = "omniauth-yahoojp"
   gem.require_paths = ["lib"]
   gem.version       = OmniAuth::YahooJp::VERSION
+  gem.licenses      = "MIT"
 
   gem.add_dependency 'omniauth', '~> 1.0'
   gem.add_dependency 'omniauth-oauth2', '~> 1.1'
