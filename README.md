@@ -1,4 +1,4 @@
-# OmniAuth YahooJp
+# OmniAuth YahooJp [![Gem Version](https://badge.fury.io/rb/omniauth-yahoojp.svg)](https://badge.fury.io/rb/omniauth-yahoojp)
 
 This is the official OmniAuth strategy for authenticating to Yahoo! JAPAN( [YConnect](http://developer.yahoo.co.jp/yconnect/) ).
 To use it, you'll need to sign up for a YConnect Application ID and Secret
