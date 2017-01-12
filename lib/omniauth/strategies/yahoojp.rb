@@ -9,7 +9,8 @@ module OmniAuth
       option :client_options, {
         :site => 'https://auth.login.yahoo.co.jp',
         :authorize_url => '/yconnect/v1/authorization',
-        :token_url => '/yconnect/v1/token'
+        :token_url => '/yconnect/v1/token',
+        :auth_scheme => :basic_auth
       }
 
       option :authorize_options, [:display, :prompt, :scope]
@@ -17,7 +18,7 @@ module OmniAuth
       def request_phase
         super
       end
-      
+
       uid { raw_info['user_id'] }
 
       info do
