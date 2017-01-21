@@ -15,7 +15,7 @@ YConnect API v1 lets you set scopes to provide granular access to different type
         }
     end
 
-# Advanced Parameters
+## Advanced Parameters
 
 You can also set :display, :prompt parameter to specify behavior of sign-in and permission page.
 More info on [YConnect](http://developer.yahoo.co.jp/yconnect/).
