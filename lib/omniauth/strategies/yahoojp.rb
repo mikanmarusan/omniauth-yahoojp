@@ -13,7 +13,7 @@ module OmniAuth
         :auth_scheme => :basic_auth
       }
 
-      option :authorize_options, [:display, :prompt, :scope]
+      option :authorize_options, [:display, :prompt, :scope, :bail]
 
       def request_phase
         super
