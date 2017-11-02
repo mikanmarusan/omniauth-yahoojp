@@ -8,8 +8,8 @@ module OmniAuth
       option :name, 'yahoojp'
       option :client_options, {
         :site => 'https://auth.login.yahoo.co.jp',
-        :authorize_url => '/yconnect/v1/authorization',
-        :token_url => '/yconnect/v1/token',
+        :authorize_url => '/yconnect/v2/authorization',
+        :token_url => '/yconnect/v2/token',
         :auth_scheme => :basic_auth
       }
 
@@ -19,17 +19,27 @@ module OmniAuth
         super
       end
 
-      uid { raw_info['user_id'] }
+      uid { raw_info['sub'] }
 
       info do
         prune!({
+          :sub        => raw_info['sub'],
           :name       => raw_info['name'],
+          :given_name => raw_info['given_name'],
+          :given_name_ja_kana_jp => raw_info['given_name#ja-Kana-JP'],
+          :given_name_ja_hani_jp => raw_info['given_name#ja-Hani-JP'],
+          :family_name => raw_info['family_name'],
+          :family_name_ja_kana_jp => raw_info['family_name#ja-Kana-JP'],
+          :family_name_ja_hani_jp => raw_info['family_name#ja-Hani-JP'],
+          :gender     => raw_info['gender'],
+          :zoneinfo   => raw_info['zoneinfo'],
+          :locale     => raw_info['locale'],
+          :birthdate  => raw_info['birthdate'],
+          :nickname   => raw_info['nickname'],
+          :picture    => raw_info['picture'],
           :email      => raw_info['email'],
-          :first_name => raw_info['given_name'],
-          :last_name  => raw_info['family_name'],
-          :urls => {
-            'YahooJp' => raw_info['link'],
-          },
+          :email_verified => raw_info['email_verified'],
+          :address    => raw_info['address'], 
         })
       end
 
@@ -41,7 +51,7 @@ module OmniAuth
 
       def raw_info
         access_token.options[:mode] = :header
-        @raw_info ||= access_token.get('https://userinfo.yahooapis.jp/yconnect/v1/attribute?schema=openid').parsed
+        @raw_info ||= access_token.get('https://userinfo.yahooapis.jp/yconnect/v2/attribute').parsed
       end
 
       def prune!(hash)
