@@ -16,8 +16,8 @@ Gem::Specification.new do |gem|
   gem.version       = OmniAuth::YahooJp::VERSION
   gem.licenses      = "MIT"
 
-  gem.add_dependency 'omniauth', '~> 1.0'
-  gem.add_dependency 'omniauth-oauth2', '~> 1.1'
+  gem.add_dependency 'omniauth', '>= 1.0'
+  gem.add_dependency 'omniauth-oauth2', '>= 1.1'
   gem.add_dependency 'httpauth'
   gem.add_development_dependency 'rspec', '~> 2.7'
   gem.add_development_dependency 'rack-test'
