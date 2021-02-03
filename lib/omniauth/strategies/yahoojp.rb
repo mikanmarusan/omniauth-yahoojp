@@ -51,7 +51,7 @@ module OmniAuth
 
       def raw_info
         access_token.options[:mode] = :header
-        @raw_info ||= access_token.get('https://userinfo.yahooapis.jp/yconnect/v2/attribute').parsed
+        @raw_info ||= access_token.post('https://userinfo.yahooapis.jp/yconnect/v2/attribute').parsed
       end
 
       def prune!(hash)
