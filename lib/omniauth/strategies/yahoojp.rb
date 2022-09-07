@@ -1,5 +1,6 @@
 require 'omniauth-oauth2'
 require 'httpauth'
+require 'json/jwt'
 
 module OmniAuth
   module Strategies
@@ -10,10 +11,11 @@ module OmniAuth
         :site => 'https://auth.login.yahoo.co.jp',
         :authorize_url => '/yconnect/v2/authorization',
         :token_url => '/yconnect/v2/token',
-        :auth_scheme => :basic_auth
+        :auth_scheme => :basic_auth,
+        :userinfo_url => 'https://userinfo.yahooapis.jp/yconnect/v2/attribute'
       }
-
       option :authorize_options, [:display, :prompt, :scope, :bail]
+      option :userinfo_access, true
 
       def request_phase
         super
@@ -39,7 +41,7 @@ module OmniAuth
           :picture    => raw_info['picture'],
           :email      => raw_info['email'],
           :email_verified => raw_info['email_verified'],
-          :address    => raw_info['address'], 
+          :address    => raw_info['address'],
         })
       end
 
@@ -50,8 +52,17 @@ module OmniAuth
       end
 
       def raw_info
-        access_token.options[:mode] = :header
-        @raw_info ||= access_token.get('https://userinfo.yahooapis.jp/yconnect/v2/attribute').parsed
+        @raw_info ||= if options.userinfo_access
+          access_token.options[:mode] = :header
+          access_token.get(options.client_options.userinfo_url).parsed
+        elsif id_token
+          id_token_claims.slice(:sub).merge(
+            id_token: id_token,
+            id_token_claims: id_token_claims,
+          )
+        else
+          {}
+        end
       end
 
       def prune!(hash)
@@ -76,6 +87,13 @@ module OmniAuth
         full_host + script_name + callback_path
       end
 
+      def id_token
+        access_token&.params&.dig('id_token')
+      end
+
+      def id_token_claims
+        JSON::JWT.decode(id_token, :skip_verification)
+      end
     end
   end
 end
