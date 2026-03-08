@@ -1,5 +1,6 @@
 require 'omniauth-oauth2'
 require 'httpauth'
+require 'json/jwt'
 
 module OmniAuth
   module Strategies
@@ -14,10 +15,7 @@ module OmniAuth
       }
 
       option :authorize_options, [:display, :prompt, :scope, :bail]
-
-      def request_phase
-        super
-      end
+      option :userinfo_access, true
 
       uid { raw_info['sub'] }
 
@@ -39,19 +37,47 @@ module OmniAuth
           :picture    => raw_info['picture'],
           :email      => raw_info['email'],
           :email_verified => raw_info['email_verified'],
-          :address    => raw_info['address'], 
+          :address    => raw_info['address'],
         })
       end
 
       extra do
         hash = {}
         hash[:raw_info] = raw_info unless skip_info?
+        hash[:id_token] = id_token if id_token
+        hash[:id_token_claims] = id_token_claims if id_token
         prune! hash
       end
 
+      credentials do
+        hash = {'token' => access_token.token}
+        hash['refresh_token'] = access_token.refresh_token if access_token.refresh_token
+        hash['expires_at'] = access_token.expires_at if access_token.expires?
+        hash['expires'] = access_token.expires?
+        hash['id_token'] = id_token if id_token
+        hash
+      end
+
       def raw_info
-        access_token.options[:mode] = :header
-        @raw_info ||= access_token.get('https://userinfo.yahooapis.jp/yconnect/v2/attribute').parsed
+        @raw_info ||= if options.userinfo_access
+          access_token.options[:mode] = :header
+          access_token.get('https://userinfo.yahooapis.jp/yconnect/v2/attribute').parsed
+        elsif id_token
+          id_token_claims
+        else
+          {}
+        end
+      end
+
+      def id_token
+        @id_token ||= access_token&.params&.dig('id_token').presence
+      end
+
+      def id_token_claims
+        return nil unless id_token
+        # Signature verification is skipped because the id_token was received
+        # directly from Yahoo's token endpoint over TLS (Authorization Code Flow).
+        @id_token_claims ||= JSON::JWT.decode(id_token, :skip_verification)
       end
 
       def prune!(hash)
@@ -69,7 +95,7 @@ module OmniAuth
           :headers => {'Authorization' => HTTPAuth::Basic.pack_authorization(client.id, client.secret)}
         }
 
-        client.get_token(token_params);
+        client.get_token(token_params)
       end
 
       def callback_url
