@@ -5,6 +5,10 @@ require 'json/jwt'
 module OmniAuth
   module Strategies
     class YahooJp < OmniAuth::Strategies::OAuth2
+      class IdTokenValidationError < StandardError; end
+
+      JWKS_URI = 'https://auth.login.yahoo.co.jp/yconnect/v2/jwks'.freeze
+      ISSUER   = 'https://auth.login.yahoo.co.jp/yconnect/v2'.freeze
 
       option :name, 'yahoojp'
       option :client_options, {
@@ -75,9 +79,7 @@ module OmniAuth
 
       def id_token_claims
         return nil unless id_token
-        # Signature verification is skipped because the id_token was received
-        # directly from Yahoo's token endpoint over TLS (Authorization Code Flow).
-        @id_token_claims ||= JSON::JWT.decode(id_token, :skip_verification)
+        @id_token_claims ||= verify_id_token!
       end
 
       def prune!(hash)
@@ -100,6 +102,28 @@ module OmniAuth
 
       def callback_url
         full_host + script_name + callback_path
+      end
+
+      private
+
+      def verify_id_token!
+        header = JSON::JWT.decode(id_token, :skip_verification).header
+        jwk = JSON::JWK::Set::Fetcher.fetch(JWKS_URI, kid: header['kid'])
+        claims = JSON::JWT.decode(id_token, jwk, [:RS256])
+        validate_id_token_claims!(claims)
+        claims
+      end
+
+      def validate_id_token_claims!(claims)
+        unless claims['iss'] == ISSUER
+          raise IdTokenValidationError, "Invalid issuer: #{claims['iss']}"
+        end
+        unless Array(claims['aud']).include?(client.id)
+          raise IdTokenValidationError, "Invalid audience: #{claims['aud']}"
+        end
+        if claims['exp'].nil? || Time.now.to_i > claims['exp'].to_i + 30
+          raise IdTokenValidationError, 'id_token has expired'
+        end
       end
 
     end

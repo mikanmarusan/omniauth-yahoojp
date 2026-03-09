@@ -65,9 +65,16 @@ Controls how user profile information is retrieved.
 When the `openid` scope is requested, the strategy automatically captures the `id_token` returned by Yahoo! JAPAN's token endpoint.
 
 - `credentials.id_token` — The raw JWT string as returned from the token endpoint.
-- `extra.id_token_claims` — The decoded claims hash from the `id_token`.
+- `extra.id_token_claims` — The decoded and verified claims hash from the `id_token`.
 
-The `id_token` signature verification is skipped because the token is received directly from Yahoo! JAPAN's token endpoint over TLS in the Authorization Code Flow, which guarantees its authenticity.
+The `id_token` is verified as follows:
+
+1. **RS256 signature verification** — The token signature is verified using the public key fetched from Yahoo! JAPAN's [JWKS endpoint](https://auth.login.yahoo.co.jp/yconnect/v2/jwks), matched by the `kid` header claim.
+2. **Issuer (`iss`) validation** — Must be `https://auth.login.yahoo.co.jp/yconnect/v2`.
+3. **Audience (`aud`) validation** — Must include your application's client ID.
+4. **Expiration (`exp`) validation** — The token must not be expired (with a 30-second leeway for clock skew).
+
+If any verification step fails, an `OmniAuth::Strategies::YahooJp::IdTokenValidationError` is raised, which is handled by OmniAuth's standard error flow.
 
 ### API Version
 
