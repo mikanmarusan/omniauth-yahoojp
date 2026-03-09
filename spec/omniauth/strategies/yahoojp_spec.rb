@@ -26,9 +26,34 @@ RSpec.describe OmniAuth::Strategies::YahooJp do
     end
   end
 
+  describe 'constants' do
+    it 'has correct JWKS_URI' do
+      expect(described_class::JWKS_URI).to eq('https://auth.login.yahoo.co.jp/yconnect/v2/jwks')
+    end
+
+    it 'has correct ISSUER' do
+      expect(described_class::ISSUER).to eq('https://auth.login.yahoo.co.jp/yconnect/v2')
+    end
+  end
+
   context 'with access_token' do
-    let(:jwt_payload) { { 'sub' => 'test123', 'name' => 'Test User', 'email' => 'test@example.com' } }
-    let(:jwt_string) { JSON::JWT.new(jwt_payload).to_s }
+    let(:rsa_key) { OpenSSL::PKey::RSA.generate(2048) }
+    let(:kid) { 'test-kid-1' }
+    let(:jwt_payload) do
+      {
+        'sub' => 'test123',
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'iss' => 'https://auth.login.yahoo.co.jp/yconnect/v2',
+        'aud' => 'client_id',
+        'exp' => Time.now.to_i + 3600
+      }
+    end
+    let(:jwt_string) do
+      jwt = JSON::JWT.new(jwt_payload)
+      jwt.kid = kid
+      jwt.sign(rsa_key, :RS256).to_s
+    end
     let(:access_token) do
       instance_double(
         OAuth2::AccessToken,
@@ -43,6 +68,13 @@ RSpec.describe OmniAuth::Strategies::YahooJp do
 
     before do
       allow(strategy).to receive(:access_token).and_return(access_token)
+      jwk = JSON::JWK.new(rsa_key, kid: kid)
+      stub_request(:get, 'https://auth.login.yahoo.co.jp/yconnect/v2/jwks')
+        .to_return(
+          status: 200,
+          body: { keys: [jwk] }.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
     end
 
     describe '#id_token' do
@@ -62,7 +94,7 @@ RSpec.describe OmniAuth::Strategies::YahooJp do
     end
 
     describe '#id_token_claims' do
-      it 'decodes the JWT without verification' do
+      it 'decodes and verifies the JWT' do
         claims = strategy.id_token_claims
         expect(claims['sub']).to eq('test123')
         expect(claims['name']).to eq('Test User')
@@ -80,9 +112,158 @@ RSpec.describe OmniAuth::Strategies::YahooJp do
         expect(strategy.id_token_claims).to be_nil
       end
 
+      it 'returns nil without fetching JWKS when id_token is nil' do
+        allow(access_token).to receive(:params).and_return({})
+        strategy.id_token_claims
+        expect(WebMock).not_to have_requested(:get, 'https://auth.login.yahoo.co.jp/yconnect/v2/jwks')
+      end
+
       it 'raises on malformed id_token' do
         allow(access_token).to receive(:params).and_return({ 'id_token' => 'not-a-jwt' })
         expect { strategy.id_token_claims }.to raise_error(JSON::JWT::InvalidFormat)
+      end
+
+      context 'with invalid signature' do
+        let(:wrong_key) { OpenSSL::PKey::RSA.generate(2048) }
+        let(:bad_jwt_string) do
+          jwt = JSON::JWT.new(jwt_payload)
+          jwt.kid = kid
+          jwt.sign(wrong_key, :RS256).to_s
+        end
+
+        before do
+          allow(access_token).to receive(:params).and_return({ 'id_token' => bad_jwt_string })
+        end
+
+        it 'raises an error' do
+          expect { strategy.id_token_claims }.to raise_error(JSON::JWS::VerificationFailed)
+        end
+      end
+
+      context 'with invalid issuer' do
+        let(:jwt_payload_bad_iss) { jwt_payload.merge('iss' => 'https://evil.example.com') }
+        let(:bad_iss_jwt) do
+          jwt = JSON::JWT.new(jwt_payload_bad_iss)
+          jwt.kid = kid
+          jwt.sign(rsa_key, :RS256).to_s
+        end
+
+        before do
+          allow(access_token).to receive(:params).and_return({ 'id_token' => bad_iss_jwt })
+        end
+
+        it 'raises IdTokenValidationError' do
+          expect { strategy.id_token_claims }.to raise_error(
+            described_class::IdTokenValidationError, /Invalid issuer/
+          )
+        end
+      end
+
+      context 'with issuer missing /yconnect/v2 suffix' do
+        let(:jwt_payload_wrong_iss) { jwt_payload.merge('iss' => 'https://auth.login.yahoo.co.jp') }
+        let(:wrong_iss_jwt) do
+          jwt = JSON::JWT.new(jwt_payload_wrong_iss)
+          jwt.kid = kid
+          jwt.sign(rsa_key, :RS256).to_s
+        end
+
+        before do
+          allow(access_token).to receive(:params).and_return({ 'id_token' => wrong_iss_jwt })
+        end
+
+        it 'raises IdTokenValidationError' do
+          expect { strategy.id_token_claims }.to raise_error(
+            described_class::IdTokenValidationError, /Invalid issuer/
+          )
+        end
+      end
+
+      context 'with invalid audience' do
+        let(:jwt_payload_bad_aud) { jwt_payload.merge('aud' => 'wrong_client_id') }
+        let(:bad_aud_jwt) do
+          jwt = JSON::JWT.new(jwt_payload_bad_aud)
+          jwt.kid = kid
+          jwt.sign(rsa_key, :RS256).to_s
+        end
+
+        before do
+          allow(access_token).to receive(:params).and_return({ 'id_token' => bad_aud_jwt })
+        end
+
+        it 'raises IdTokenValidationError' do
+          expect { strategy.id_token_claims }.to raise_error(
+            described_class::IdTokenValidationError, /Invalid audience/
+          )
+        end
+      end
+
+      context 'with audience as array including client_id' do
+        let(:jwt_payload_array_aud) { jwt_payload.merge('aud' => ['other_client', 'client_id']) }
+        let(:array_aud_jwt) do
+          jwt = JSON::JWT.new(jwt_payload_array_aud)
+          jwt.kid = kid
+          jwt.sign(rsa_key, :RS256).to_s
+        end
+
+        before do
+          allow(access_token).to receive(:params).and_return({ 'id_token' => array_aud_jwt })
+        end
+
+        it 'accepts the token' do
+          expect { strategy.id_token_claims }.not_to raise_error
+        end
+      end
+
+      context 'with expired token' do
+        let(:jwt_payload_expired) { jwt_payload.merge('exp' => Time.now.to_i - 60) }
+        let(:expired_jwt) do
+          jwt = JSON::JWT.new(jwt_payload_expired)
+          jwt.kid = kid
+          jwt.sign(rsa_key, :RS256).to_s
+        end
+
+        before do
+          allow(access_token).to receive(:params).and_return({ 'id_token' => expired_jwt })
+        end
+
+        it 'raises IdTokenValidationError' do
+          expect { strategy.id_token_claims }.to raise_error(
+            described_class::IdTokenValidationError, /expired/
+          )
+        end
+      end
+
+      context 'with token within 30-second leeway' do
+        let(:jwt_payload_just_expired) { jwt_payload.merge('exp' => Time.now.to_i - 10) }
+        let(:leeway_jwt) do
+          jwt = JSON::JWT.new(jwt_payload_just_expired)
+          jwt.kid = kid
+          jwt.sign(rsa_key, :RS256).to_s
+        end
+
+        before do
+          allow(access_token).to receive(:params).and_return({ 'id_token' => leeway_jwt })
+        end
+
+        it 'accepts the token' do
+          expect { strategy.id_token_claims }.not_to raise_error
+        end
+      end
+
+      context 'with kid not found in JWKS' do
+        let(:jwt_with_unknown_kid) do
+          jwt = JSON::JWT.new(jwt_payload)
+          jwt.kid = 'unknown-kid'
+          jwt.sign(rsa_key, :RS256).to_s
+        end
+
+        before do
+          allow(access_token).to receive(:params).and_return({ 'id_token' => jwt_with_unknown_kid })
+        end
+
+        it 'raises an error' do
+          expect { strategy.id_token_claims }.to raise_error(StandardError)
+        end
       end
     end
 
