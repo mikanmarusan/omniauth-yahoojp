@@ -44,6 +44,6 @@ This is a Ruby gem that implements an OmniAuth strategy for Yahoo! JAPAN's YConn
 
 ## Downstream Test Project
 
-- [`omniauth-yahoojp-tester-rails5`](https://github.com/mikanmarusan/omniauth-yahoojp-tester-rails5) is a Rails 5 app that consumes this gem for integration testing.
+- [`omniauth-yahoojp-tester-containers`](https://github.com/mikanmarusan/omniauth-yahoojp-tester-containers) is an app that consumes this gem for integration testing.
 - Its CLAUDE.md documents the exact API surface used and cross-project update rules.
-- Use `/add-dir ../omniauth-yahoojp-tester-rails5` to add it for cross-project awareness when making API changes.
+- Use `/add-dir ../omniauth-yahoojp-tester-containers` to add it for cross-project awareness when making API changes.
