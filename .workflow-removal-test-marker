@@ -1,0 +1,3 @@
+Temporary marker file for issue #22 verification — confirms that opening a PR
+no longer triggers Claude Code Review. This branch and file will be deleted
+after the verification is complete.
