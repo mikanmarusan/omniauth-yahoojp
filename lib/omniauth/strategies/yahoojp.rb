@@ -67,7 +67,7 @@ module OmniAuth
           access_token.options[:mode] = :header
           access_token.get('https://userinfo.yahooapis.jp/yconnect/v2/attribute').parsed
         elsif id_token
-          id_token_claims
+          id_token_claims || {}
         else
           {}
         end
@@ -80,6 +80,8 @@ module OmniAuth
       def id_token_claims
         return nil unless id_token
         @id_token_claims ||= verify_id_token!
+      rescue JSON::JWT::InvalidFormat
+        nil
       end
 
       def prune!(hash)

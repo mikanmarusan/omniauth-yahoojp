@@ -118,9 +118,9 @@ RSpec.describe OmniAuth::Strategies::YahooJp do
         expect(WebMock).not_to have_requested(:get, 'https://auth.login.yahoo.co.jp/yconnect/v2/jwks')
       end
 
-      it 'raises on malformed id_token' do
+      it 'returns nil on malformed id_token' do
         allow(access_token).to receive(:params).and_return({ 'id_token' => 'not-a-jwt' })
-        expect { strategy.id_token_claims }.to raise_error(JSON::JWT::InvalidFormat)
+        expect(strategy.id_token_claims).to be_nil
       end
 
       context 'with invalid signature' do
@@ -324,6 +324,17 @@ RSpec.describe OmniAuth::Strategies::YahooJp do
         end
 
         it 'returns empty hash' do
+          expect(strategy.raw_info).to eq({})
+        end
+      end
+
+      context 'with userinfo_access: false and malformed id_token' do
+        before do
+          strategy.options[:userinfo_access] = false
+          allow(access_token).to receive(:params).and_return({ 'id_token' => 'not-a-jwt' })
+        end
+
+        it 'returns an empty hash instead of raising' do
           expect(strategy.raw_info).to eq({})
         end
       end
